@@ -67,7 +67,7 @@ steal('can/util', 'can/list', function (can) {
 			return Array.prototype.sort.apply(this, args);
 		}
 	});
-	// create push, pop, shift, and unshift
+	// create push, unshift
 	// converts to an array of arguments
 	var getArgs = function (args) {
 		return args[0] && can.isArray(args[0]) ? args[0] : can.makeArray(args);
@@ -138,6 +138,35 @@ steal('can/util', 'can/list', function (can) {
 				return res;
 			};
 		});
+
+	// Overwrite .splice so that items added to the list (no matter what the
+	// defined index) are inserted at the correct index, while preserving the
+	// ability to remove items from a list.
+	(function () {
+		var proto = can.List.prototype;
+		var oldSplice = proto.splice;
+
+		proto.splice = function (index, howMany) {
+
+			var args = can.makeArray(arguments),
+				newElements =[],
+				i, len;
+
+			// Get the list of new items intended to be added to the list
+			for (i = 2, len = args.length; i < len; i++) {
+				args[i] = this.__type(args[i], i);
+				newElements.push(args[i]);
+			}
+
+			// Remove items using the original .splice
+			oldSplice.call(this, index, howMany);
+
+			// Add items by way of push so that they're sorted into
+			// the correct position
+			proto.push.apply(this, newElements);
+		};
+	})();
+
 	//- override changes for sorting
 	proto._changes = function (ev, attr, how, newVal, oldVal) {
 		if (this.comparator && /^\d+./.test(attr)) {
