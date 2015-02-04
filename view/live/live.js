@@ -252,7 +252,18 @@ steal('can/util', 'can/view/elements.js', 'can/view', 'can/view/node_lists', 'ca
 					if(!fullTeardown) {
 						can.remove(can.$(itemsToRemove));
 					}
-					
+
+				},
+				move = function (ev, item, newIndex, oldIndex) {
+					// The position of elements is always after the initial text
+					// placeholder node
+					var targetIndex = newIndex + 1;
+					var currentIndex = oldIndex + 1;
+					var afterItem = masterNodeList[targetIndex][0];
+					var movedItem = masterNodeList[currentIndex][0];
+					var parentNode = afterItem.parentNode;
+
+					parentNode.insertBefore(movedItem, afterItem);
 				},
 				// A text node placeholder
 				text = document.createTextNode(''),
@@ -279,7 +290,8 @@ steal('can/util', 'can/view/elements.js', 'can/view', 'can/view/node_lists', 'ca
 					// list might be a plain array
 					if (list.bind) {
 						list.bind('add', add)
-							.bind('remove', remove);
+							.bind('remove', remove)
+							.bind('move', move);
 					}
 					add({}, list, 0);
 				};

@@ -1,7 +1,7 @@
-steal("can/map/sort", "can/test", "can/view/mustache", function () {
+steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", function () {
 	module('can/map/sort');
 
-	test('list events', 16, function () {
+	test('List events', function () {
 		var list = new can.List([{
 			name: 'Justin'
 		}, {
@@ -22,34 +22,40 @@ steal("can/map/sort", "can/test", "can/view/mustache", function () {
 		// - change something happened
 		// a move directly on this list
 		list.bind('move', function (ev, item, newPos, oldPos) {
-			ok(true, 'move called');
-			equal(item.name, 'Zed');
-			equal(newPos, 3);
-			equal(oldPos, 0);
+			ok(ev, '"move" event passed `ev`');
+			equal(item.name, 'Zed', '"move" event passed correct `item`');
+			equal(newPos, 3, '"move" event passed correct `newPos`');
+			equal(oldPos, 0, '"move" event passed correct `oldPos`');
 		});
+
 		// a remove directly on this list
 		list.bind('remove', function (ev, items, oldPos) {
-			ok(true, 'remove called');
-			equal(items.length, 1);
-			equal(items[0].name, 'Alexis');
-			equal(oldPos, 0, 'put in right spot');
+			ok(ev, '"remove" event passed ev');
+			equal(items.length, 1, '"remove" event passed correct # of `item`\'s');
+			equal(items[0].name, 'Alexis', '"remove" event passed correct `item`');
+			equal(oldPos, 0, '"remove" event passed correct `oldPos`');
 		});
-		list.bind('add', function (ev, items, newLength) {
-			ok(true, 'add called');
-			equal(items.length, 1);
-			equal(items[0].name, 'Alexis');
-			// .push returns the new length not the current position
-			equal(newLength, 4, 'got new length');
+
+		list.bind('add', function (ev, items, index) {
+			ok(ev, '"add" event passed ev');
+			equal(items.length, 1, '"add" event passed correct # of items');
+			equal(items[0].name, 'Alexis', '"add" event passed correct `item`');
+			equal(index, 0, '"add" event passed correct `index`');
 		});
+
+		// Push: Should result in a "add" event
 		list.push({
 			name: 'Alexis'
 		});
-		// now lets remove alexis ...
+
+		// Splice: Should result in a "remove" event
 		list.splice(0, 1);
+
+		// Update: Should result in a "move" event
 		list[0].attr('name', 'Zed');
 	});
 
-	test('list sort with func', 1, function () {
+	test('Passing a comparator to sort()', 1, function () {
 		var list = new can.List([{
 			priority: 4,
 			name: 'low'
@@ -73,7 +79,7 @@ steal("can/map/sort", "can/test", "can/view/mustache", function () {
 		equal(list[0].name, 'high');
 	});
 
-	test('list sort with comparator', 1, function () {
+	test('Defining a comparator property', 1, function () {
 		var list = new can.List([{
 			priority: 4,
 			name: 'low'
@@ -92,7 +98,7 @@ steal("can/map/sort", "can/test", "can/view/mustache", function () {
 		equal(list[0].name, 'high');
 	});
 
-	test('list sort with containing Map attribute', 4, function () {
+	test('Defining a comparator property that is a function of a can.Map', 4, function () {
 		var list = new can.Map.List([
 			new can.Map({
 				text: 'Bbb',
@@ -127,133 +133,154 @@ steal("can/map/sort", "can/test", "can/view/mustache", function () {
 		equal(list.attr()[3].text, 'Bbb');
 	});
 
-	test('Render pushed item at correct index', function () {
 
-		var renderer =
-			can.view.mustache('<ul>{{#items}}<li>{{id}}</li>{{/items}}</ul>');
-		var el = document.createElement('div');
 
-		var items = new can.List([{
-			id: 'b'
-		}]);
-		items.comparator = 'id';
+	function renderedTests (helperType, renderer) {
+		test('Render pushed item at correct index using ' + helperType +' helper', function () {
+			var el = document.createElement('div');
 
-		// Render the template and place inside the <div>
-		el.appendChild(renderer({
-			items: items
-		}));
+			var items = new can.List([{
+				id: 'b'
+			}]);
+			items.comparator = 'id';
 
-		var firstElText = el.getElementsByTagName('li')[0].innerText;
+			// Render the template and place inside the <div>
+			el.appendChild(renderer({
+				items: items
+			}));
 
-		/// Check that the template rendered an item
-		equal(firstElText, 'b',
-			'First LI is a "b"');
+			var firstElText = el.getElementsByTagName('li')[0].innerText;
 
-		// Add another item
-		items.push({
-			id: 'a'
+			/// Check that the template rendered an item
+			equal(firstElText, 'b',
+				'First LI is a "b"');
+
+			// Add another item
+			items.push({
+				id: 'a'
+			});
+
+			// Get the text of the first <li> in the <div>
+			firstElText = el.getElementsByTagName('li')[0].innerText;
+
+			console.log(el.innerHTML)
+
+			// Check that the template rendered that item at the correct index
+			equal(firstElText, 'a',
+				'An item pushed into the list is rendered at the correct position');
+
 		});
 
-		// Get the text of the first <li> in the <div>
-		firstElText = el.getElementsByTagName('li')[0].innerText;
+		test('Render unshifted item at correct index using ' + helperType +' helper', function () {
+			var el = document.createElement('div');
 
-		// Check that the template rendered that item at the correct index
-		equal(firstElText, 'a',
-			'An item pushed into the list is rendered at the correct position');
+			var items = new can.List([
+				{ id: 'a' },
+				{ id: 'c' }
+			]);
+			items.comparator = 'id';
 
-	});
+			// Render the template and place inside the <div>
+			el.appendChild(renderer({
+				items: items
+			}));
 
-	test('Render unshifted item at correct index', function () {
+			var firstElText = el.getElementsByTagName('li')[0].innerText;
 
-		var renderer =
-			can.view.mustache('<ul>{{#items}}<li>{{id}}</li>{{/items}}</ul>');
-		var el = document.createElement('div');
+			/// Check that the template rendered an item
+			equal(firstElText, 'a', 'First LI is a "a"');
 
-		var items = new can.List([{
-			id: 'a'
-		}]);
-		items.comparator = 'id';
+			// Attempt to add an item to the beginning of the list
+			items.unshift({
+				id: 'b'
+			});
 
-		// Render the template and place inside the <div>
-		el.appendChild(renderer({
-			items: items
-		}));
+			// Get the text of the first <li> in the <div>
+			firstElText = el.getElementsByTagName('li')[1].innerText;
 
-		var firstElText = el.getElementsByTagName('li')[0].innerText;
+			// Check that the template rendered that item at the correct index
+			equal(firstElText, 'b',
+				'An item unshifted into the list is rendered at the correct position');
 
-		/// Check that the template rendered an item
-		equal(firstElText, 'a',
-			'First LI is a "a"');
-
-		// Add another item
-		items.unshift({
-			id: 'b'
 		});
 
-		// Get the text of the first <li> in the <div>
-		firstElText = el.getElementsByTagName('li')[1].innerText;
+		test('Render spliced item at correct index using ' + helperType +' helper', function () {
+			var el = document.createElement('div');
 
-		// Check that the template rendered that item at the correct index
-		equal(firstElText, 'b',
-			'An item unshifted into the list is rendered at the correct position');
+			var items = new can.List([
+				{ id: 'b' },
+				{ id: 'c' }
+			]);
+			items.comparator = 'id';
 
-	});
+			// Render the template and place inside the <div>
+			el.appendChild(renderer({
+				items: items
+			}));
 
-	test('Render spliced item at correct index', function () {
+			var firstElText = el.getElementsByTagName('li')[0].innerText;
 
-		var renderer =
-			can.view.mustache('<ul>{{#items}}<li>{{id}}</li>{{/items}}</ul>');
-		var el = document.createElement('div');
+			// Check that the "b" is at the beginning of the list
+			equal(firstElText, 'b',
+				'First LI is a b');
 
-		var items = new can.List([
-			{ id: 'b' },
-			{ id: 'c' }
-		]);
-		items.comparator = 'id';
+			// Add a "1" to the middle of the list
+			items.splice(1, 0, {
+				id: 'a'
+			});
 
-		// Render the template and place inside the <div>
-		el.appendChild(renderer({
-			items: items
-		}));
+			// Get the text of the first <li> in the <div>
+			firstElText = el.getElementsByTagName('li')[0].innerText;
 
-		var firstElText = el.getElementsByTagName('li')[0].innerText;
+			// Check that the "a" was added to the beginning of the list despite
+			// the splice
+			equal(firstElText, 'a',
+				'An item spliced into the list at the wrong position is rendered ' +
+				'at the correct position');
 
-		// Check that the "b" is at the beginning of the list
-		equal(firstElText, 'b',
-			'First LI is a b');
-
-		// Add a "1" to the middle of the list
-		items.splice(1, 0, {
-			id: 'a'
 		});
 
-		// Get the text of the first <li> in the <div>
-		firstElText = el.getElementsByTagName('li')[0].innerText;
+		test('Moves rendered item to correct index using ' + helperType +' helper', function () {
+			var el = document.createElement('div');
 
-		// Check that the "a" was added to the beginning of the list despite
-		// the splice
-		equal(firstElText, 'a',
-			'An item spliced into the list at the wrong position is rendered ' +
-			'at the correct position');
+			var items = new can.List([
+				{ id: 'x' },
+				{ id: 'y' },
+				{ id: 'z' }
+			]);
+			items.comparator = 'id';
 
-	});
+			// Render the template and place inside the <div>
+			el.appendChild(renderer({
+				items: items
+			}));
 
-	test('Fires "move" event on property change', 2, function () {
+			var firstElText = el.getElementsByTagName('li')[0].innerText;
 
-		var items = new can.List([
-			{ id: 'x' },
-			{ id: 'y' },
-			{ id: 'z' }
-		]);
-		items.comparator = 'id';
-		items.bind('move', function (ev, item, newPos, oldPos) {
-			if (oldPos === 2 && newPos === 0) {
-				ok(true, 'Last item moved to the beginnning of the list');
-			}
+			// Check that the "x" is at the beginning of the list
+			equal(firstElText, 'x', 'First LI is a "x"');
+
+			// Change the ID of the last item so that it's sorted above the first item
+			items.attr('2').attr('id', 'a');
+
+			// Get the text of the first <li> in the <div>
+			firstElText = el.getElementsByTagName('li')[0].innerText;
+
+			// Check that the "a" was added to the beginning of the list despite
+			// the splice
+			equal(firstElText, 'a', 'The last item was moved to the first position ' +
+				'after it\'s value was changed');
+
 		});
 
-		// Change the ID of the last item to be lower than the first item
-		items.attr('2').attr('id', 'a');
-		equal(items.attr('0').attr('id'), 'a', 'First item is an "a"');
-	});
+	}
+
+	var blockHelperTemplate = '<ul>{{#items}}<li>{{id}}</li>{{/items}}';
+	var eachHelperTemplate = '<ul>{{#each items}}<li>{{id}}</li>{{/each}}';
+
+	renderedTests('{{#block}}', can.view.mustache(blockHelperTemplate));
+	renderedTests('{{#block}}', can.stache(blockHelperTemplate));
+	renderedTests('{{#each}}', can.view.mustache(eachHelperTemplate));
+	renderedTests('{{#each}}', can.stache(eachHelperTemplate));
+
 });

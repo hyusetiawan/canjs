@@ -56,8 +56,12 @@ steal('can/util', 'can/list', function (can) {
 				args = comparator ? [
 
 					function (a, b) {
-						a = typeof a[comparator] === 'function' ? a[comparator]() : a[comparator];
-						b = typeof b[comparator] === 'function' ? b[comparator]() : b[comparator];
+						var a = typeof a[comparator] === 'function' ?
+							a[comparator]() :
+							a.attr(comparator);
+						var b = typeof b[comparator] === 'function' ?
+							b[comparator]() :
+							b.attr(comparator);
 						return a === b ? 0 : a < b ? -1 : 1;
 					}
 				] : [method];
@@ -119,23 +123,58 @@ steal('can/util', 'can/list', function (can) {
 			var proto = can.List.prototype,
 				old = proto[name];
 			proto[name] = function () {
+
+				/*
 				// get the items being added
-				var args = getArgs(arguments),
+				var args = getArgs(arguments);
 					// where we are going to add items
-					len = where ? this.length : 0;
+				var len = where ? this.length : 0;
+
 				// call the original method
 				var res = old.apply(this, arguments);
+
 				// cause the change where the args are:
-				// len - where the additions happened
-				// add - items added
-				// args - the items added
-				// undefined - the old value
+				//   len - where the additions happened
+				//   add - items added
+				//   args - the items added
+				//   undefined - the old value
 				if (this.comparator && args.length) {
 					this.sort(null, true);
 					can.batch.trigger(this, 'reset', [args]);
 					this._triggerChange('' + len, 'add', args, undefined);
 				}
+
 				return res;
+				*/
+
+
+
+				if (this.comparator && arguments.length) {
+					// get the items being added
+					var args = getArgs(arguments);
+					var i = args.length;
+
+					while (i--) {
+						// Go through and convert anything to an `map` that needs
+						// to be converted.
+						var val = can.bubble.set(this, i, this.__type(args[i], i) );
+
+						// Insert this item at the correct index
+						var sortedIndex = this.sortedIndex(val);
+						Array.prototype.splice.apply(this, [sortedIndex, 0, val]);
+
+						can.batch.trigger(this, 'reset', [args]);
+
+						this._triggerChange('' + sortedIndex, 'add', args, undefined);
+					}
+					return this;
+				} else {
+					// call the original method
+					return old.apply(this, arguments);
+				}
+
+
+
 			};
 		});
 
@@ -185,6 +224,9 @@ steal('can/util', 'can/list', function (can) {
 						item,
 						newIndex,
 						index
+					]);
+					can.trigger(this, 'length', [
+						this.length
 					]);
 					can.trigger(this, 'change', [
 						attr.replace(/^\d+/, newIndex),
