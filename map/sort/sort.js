@@ -191,6 +191,12 @@ steal('can/util', 'can/list', function (can) {
 				newElements =[],
 				i, len;
 
+			// Don't use this "sort" oriented splice unless this list has a
+			// comparator
+			if (! this.comparator) {
+				return oldSplice.apply(this, args);
+			}
+
 			// Get the list of new items intended to be added to the list
 			for (i = 2, len = args.length; i < len; i++) {
 				args[i] = this.__type(args[i], i);
