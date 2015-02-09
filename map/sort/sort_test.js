@@ -1,7 +1,7 @@
 steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", function () {
 	module('can/map/sort');
 
-	test('List events', function () {
+	test('List events', (4*3), function () {
 		var list = new can.List([{
 			name: 'Justin'
 		}, {
@@ -69,6 +69,7 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 			priority: 3,
 			name: 'mid'
 		}]);
+		// TODO: Make sure comparator is always a function
 		list.sort(function (a, b) {
 			// Sort functions always need to return the -1/0/1 integers
 			if (a.priority < b.priority) {
@@ -133,10 +134,17 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 		equal(list.attr()[3].text, 'Bbb');
 	});
 
+	test('Sorts primitive items', function () {
+		var list = new can.List(['z', 'y', 'x']);
+		list.sort();
+
+		equal(list[0], 'x', 'Moved string to correct index');
+	});
 
 
-	function renderedTests (helperType, renderer) {
-		test('Render pushed item at correct index using ' + helperType +' helper', function () {
+
+	function renderedTests (templateEngine, helperType, renderer) {
+		test('Render pushed item at correct index with ' + templateEngine + ' using ' + helperType +' helper', function () {
 			var el = document.createElement('div');
 
 			var items = new can.List([{
@@ -163,15 +171,15 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 			// Get the text of the first <li> in the <div>
 			firstElText = el.getElementsByTagName('li')[0].innerText;
 
-			console.log(el.innerHTML)
-
 			// Check that the template rendered that item at the correct index
 			equal(firstElText, 'a',
 				'An item pushed into the list is rendered at the correct position');
 
 		});
 
-		test('Render unshifted item at correct index using ' + helperType +' helper', function () {
+		// TODO: Test that push and sort have the result in the same output
+
+		test('Render unshifted item at correct index with ' + templateEngine + ' using ' + helperType +' helper', function () {
 			var el = document.createElement('div');
 
 			var items = new can.List([
@@ -204,7 +212,7 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 
 		});
 
-		test('Render spliced item at correct index using ' + helperType +' helper', function () {
+		test('Render spliced item at correct index with ' + templateEngine + ' using ' + helperType +' helper', function () {
 			var el = document.createElement('div');
 
 			var items = new can.List([
@@ -240,6 +248,8 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 
 		});
 
+		// TODO: Test adding and removing items at the same time with .splice()
+
 		test('Moves rendered item to correct index using ' + helperType +' helper', function () {
 			var el = document.createElement('div');
 
@@ -273,14 +283,58 @@ steal("can/map/sort", "can/test", "can/view/mustache", "can/view/stache", functi
 
 		});
 
+		test('Render re-sorted list with  ' + templateEngine + ' using the ' + helperType +' helper', function () {
+			var el = document.createElement('div');
+
+			var items = new can.List([
+				{ id: 4 },
+				{ id: 1 },
+				{ id: 6 },
+				{ id: 3 },
+				{ id: 2 },
+				{ id: 8 },
+				{ id: 0 },
+				{ id: 5 },
+				{ id: 6 },
+				{ id: 9 },
+			]);
+
+			// Render the template and place inside the <div>
+			el.appendChild(renderer({
+				items: items
+			}));
+
+			var firstElText = el.getElementsByTagName('li')[0].innerText;
+
+			// Check that the "4" is at the beginning of the list
+			equal(firstElText, 4, 'First LI is a "4"');
+
+			// Sort the list in-place
+			items.comparator = 'id';
+			items.sort();
+
+			firstElText = el.getElementsByTagName('li')[0].innerText;
+
+			equal(firstElText, 0, 'The `0` was moved to beginning of the list' +
+				'once sorted.');
+
+		});
+
 	}
 
 	var blockHelperTemplate = '<ul>{{#items}}<li>{{id}}</li>{{/items}}';
 	var eachHelperTemplate = '<ul>{{#each items}}<li>{{id}}</li>{{/each}}';
 
-	renderedTests('{{#block}}', can.view.mustache(blockHelperTemplate));
-	renderedTests('{{#block}}', can.stache(blockHelperTemplate));
-	renderedTests('{{#each}}', can.view.mustache(eachHelperTemplate));
-	renderedTests('{{#each}}', can.stache(eachHelperTemplate));
+	renderedTests('Mustache', '{{#block}}', can.view.mustache(blockHelperTemplate));
+	renderedTests('Stache', '{{#block}}', can.stache(blockHelperTemplate));
+	renderedTests('Mustache', '{{#each}}', can.view.mustache(eachHelperTemplate));
+	renderedTests('Stache', '{{#each}}', can.stache(eachHelperTemplate));
+
+
+	test('Live sort', function () {
+		var list = new can.List([8,5,2,1,5,9,3,5]);
+		list.sort();
+		equal(list[0], 1, 'Sorted "1" to the beginning of the list');
+	});
 
 });
